@@ -1,27 +1,29 @@
 import { MailService } from '@sendgrid/mail';
+import { MailDataRequired } from "@sendgrid/helpers/classes/mail";
+import { EmailData } from "@sendgrid/helpers/classes/email-address";
 
-import { MediaObject, Notifier, Settings, ScryptedDeviceBase, Setting, SettingValue } from '@scrypted/sdk';
+import { MediaObject, Notifier, NotifierOptions, Settings, ScryptedDeviceBase, Setting, SettingValue } from '@scrypted/sdk';
 import sdk from '@scrypted/sdk';
 
 const { mediaManager } = sdk;
 
 class SendGridProvider extends ScryptedDeviceBase implements Notifier, Settings {
-    sendgridClient: MailService
+    sendgridClient: MailService | null
 
     constructor(nativeId?: string) {
         super(nativeId);
         this.initializeSendGrid();
     }
 
-    to(): string {
+    to(): string | null {
         return this.storage.getItem('to')
     }
 
-    from(): string {
+    from(): string | null {
         return this.storage.getItem('from')
     }
 
-    apikey(): string {
+    apikey(): string | null {
         return this.storage.getItem('apikey')
     }
 
@@ -68,15 +70,17 @@ class SendGridProvider extends ScryptedDeviceBase implements Notifier, Settings 
         this.initializeSendGrid();
     }
 
-    async sendNotification(title: string, body: string, media?: string | MediaObject): Promise<void> {
+    async sendNotification(title: string, options?: NotifierOptions, media?: string | MediaObject, icon?: string | MediaObject): Promise<void> {
         if (!this.sendgridClient) {
-            this.console.warn('SendGrid client not initialized, cannot send notification')
+            this.console.warn('SendGrid client not initialized, cannot send notification');
             return;
         }
 
-        this.console.info('Starting to send email')
+        this.console.info('Starting to send email');
 
-        let attachments = [];
+        const body = options?.body || '';
+
+        let attachments: any[] = [];
         if (typeof media === 'string') {
             media = await mediaManager.createMediaObjectFromUrl(media as string);
         }
@@ -93,9 +97,9 @@ class SendGridProvider extends ScryptedDeviceBase implements Notifier, Settings 
             ]
         }
 
-        let msg = {
-            to: this.to(),
-            from: this.from(),
+        let msg: MailDataRequired = {
+            to: this.to() as EmailData,
+            from: this.from() as EmailData,
             subject: title,
             html: body,
             attachments: attachments
